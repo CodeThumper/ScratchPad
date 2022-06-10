@@ -3,7 +3,7 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Text;
 
-namespace GPRestApi.Infrastructure
+namespace MyProject.Infrastructure
 {
     public static class HashUtility
     {
@@ -35,19 +35,19 @@ namespace GPRestApi.Infrastructure
                 conn.Open();
             }
 
-            var command = new SqlCommand("IF OBJECT_ID('[dbo].[CBSynchronizationHash]', 'U') IS NOT NULL SELECT 'true' ELSE SELECT 'false'", conn);
+            var command = new SqlCommand("IF OBJECT_ID('[dbo].[SynchronizationHash]', 'U') IS NOT NULL SELECT 'true' ELSE SELECT 'false'", conn);
             var tableExists = Convert.ToBoolean(command.ExecuteScalar());
 
             if (!tableExists)
             {
-                using (var cmd = new SqlCommand("CREATE TABLE CBSynchronizationHash(ModelType char(30),ProviderKey char(50),CBHash char(150), [AddedAt] [datetime], [UpdatedAt] [datetime])", conn))
+                using (var cmd = new SqlCommand("CREATE TABLE SynchronizationHash(ModelType char(30),ProviderKey char(50),CBHash char(150), [AddedAt] [datetime], [UpdatedAt] [datetime])", conn))
                 {
                     cmd.ExecuteScalar();
                 }
             }
 
             var existingHash = string.Empty;
-            using (var selectHashCommand = new SqlCommand("SELECT [CBHash] FROM [dbo].[CBSynchronizationHash] WHERE [ModelType] = @modelType AND [ProviderKey] = @providerKey", conn))
+            using (var selectHashCommand = new SqlCommand("SELECT [RecordHash] FROM [dbo].[SynchronizationHash] WHERE [ModelType] = @modelType AND [ProviderKey] = @providerKey", conn))
             {
                 selectHashCommand.Parameters.AddWithValue("@modelType", modelType);
                 selectHashCommand.Parameters.AddWithValue("@providerKey", providerKey);
@@ -58,11 +58,11 @@ namespace GPRestApi.Infrastructure
             // If the hash doesn't already exist add it
             if (string.IsNullOrEmpty(existingHash))
             {
-                using (var insertCommand = new SqlCommand("INSERT INTO [dbo].[CBSynchronizationHash]([ModelType],[ProviderKey],[CBHash],[AddedAt]) VALUES(@modelType,@providerKey,@cbhash,@addedAt)", conn))
+                using (var insertCommand = new SqlCommand("INSERT INTO [dbo].[SynchronizationHash]([ModelType],[ProviderKey],[RecordHash],[AddedAt]) VALUES(@modelType,@providerKey,@recordHash,@addedAt)", conn))
                 {
                     insertCommand.Parameters.AddWithValue("@modelType", modelType);
                     insertCommand.Parameters.AddWithValue("@providerKey", providerKey);
-                    insertCommand.Parameters.AddWithValue("@cbhash", hash);
+                    insertCommand.Parameters.AddWithValue("@recordHash", hash);
                     insertCommand.Parameters.AddWithValue("@addedAt", DateTime.UtcNow);
                     insertCommand.ExecuteNonQuery();
                 }
@@ -76,11 +76,11 @@ namespace GPRestApi.Infrastructure
             }
 
             // the hash doesn't match something changed we need this updated record
-            using (SqlCommand cmd = new SqlCommand("UPDATE [dbo].[CBSynchronizationHash] SET [CBHash] = @cbhash, [UpdatedAt] = @updatedAt WHERE [ModelType] = @modelType AND [ProviderKey] = @providerKey", conn))
+            using (SqlCommand cmd = new SqlCommand("UPDATE [dbo].[SynchronizationHash] SET [RecordHash] = @recordHash, [UpdatedAt] = @updatedAt WHERE [ModelType] = @modelType AND [ProviderKey] = @providerKey", conn))
             {
                 cmd.Parameters.AddWithValue("@modelType", modelType);
                 cmd.Parameters.AddWithValue("@providerKey", providerKey);
-                cmd.Parameters.AddWithValue("@cbhash", hash);
+                cmd.Parameters.AddWithValue("@recordHash", hash);
                 cmd.Parameters.AddWithValue("@updatedAt", DateTime.UtcNow);
                 cmd.ExecuteNonQuery();
             }
